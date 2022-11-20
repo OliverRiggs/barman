@@ -947,6 +947,7 @@ def recover(args):
                 remote_command=args.remote_ssh_command,
                 target_action=getattr(args, "target_action", None),
                 standby_mode=getattr(args, "standby_mode", None),
+                recovery_conf_filename=getattr(args, "recovery_conf_filename", None),
                 **snapshot_kwargs
             )
         except RecoveryException as exc:
