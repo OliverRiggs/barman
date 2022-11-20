@@ -740,6 +740,11 @@ def rebuild_xlogdb(args):
             ),
         ),
         argument(
+            "--recovery-conf-filename",
+            dest="recovery_conf_filename",
+            help=("filename for storing recovery configurations."),
+        ),
+        argument(
             "--snapshot-recovery-instance",
             help="Instance where the disks recovered from the snapshots are attached",
         ),
