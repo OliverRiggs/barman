@@ -317,8 +317,8 @@ class RecoveryExecutor(object):
         # 3) copy
         output.info("Identify dangerous settings in destination directory.")
 
-        self._map_temporary_config_files(recovery_info, backup_info, remote_command, recovery_conf_filename)
-        self._analyse_temporary_config_files(recovery_info, recovery_conf_filename)
+        self._map_temporary_config_files(recovery_info, backup_info, remote_command)
+        self._analyse_temporary_config_files(recovery_info)
         self._copy_temporary_config_files(dest, remote_command, recovery_info)
 
         return recovery_info
@@ -368,8 +368,8 @@ class RecoveryExecutor(object):
         }
         recovery_info["results"] = results
         # Set up a list of configuration files
+        recovery_info["configuration_files"].append("postgresql.conf")
         if not recovery_conf_filename:
-            recovery_info["configuration_files"].append("postgresql.conf")
             if backup_info.version >= 90400:
                 recovery_info["configuration_files"].append("postgresql.auto.conf")
 
@@ -379,6 +379,7 @@ class RecoveryExecutor(object):
                 results["recovery_configuration_file"] = "recovery.conf"
         else:
             recovery_info["configuration_files"].append(recovery_conf_filename)
+            results["recovery_configuration_file"] = recovery_conf_filename
         # Handle remote recovery options
         if remote_command:
             recovery_info["recovery_dest"] = "remote"
@@ -1127,7 +1128,7 @@ class RecoveryExecutor(object):
             conf_file_paths.append(conf_file_path)
         return conf_file_paths
 
-    def _map_temporary_config_files(self, recovery_info, backup_info, remote_command, recovery_conf_filename):
+    def _map_temporary_config_files(self, recovery_info, backup_info, remote_command):
         """
         Map configuration files, by filling the 'temporary_configuration_files'
         array, depending on remote or local recovery. This array will be used
@@ -1138,7 +1139,6 @@ class RecoveryExecutor(object):
         :param barman.infofile.LocalBackupInfo backup_info: a backup
             representation
         :param str remote_command: ssh command for remote recovery
-        :param str|None recovery_conf_filename: filename for storing recovery configurations
         """
 
         # Cycle over postgres configuration files which my be missing.
@@ -1179,10 +1179,10 @@ class RecoveryExecutor(object):
             # Make sure 'postgresql.auto.conf' file exists in
             # recovery_info['temporary_configuration_files'] because
             # the recovery settings will end up there
-            if not recovery_conf_filename:
+            if not recovery_info["results"]["recovery_configuration_file"]:
                 conf_file = "postgresql.auto.conf"
             else:
-                conf_file = recovery_conf_filename
+                conf_file = recovery_info["results"]["recovery_configuration_file"]
             if conf_file not in recovery_info["configuration_files"]:
                 if remote_command:
                     conf_file_path = os.path.join(recovery_info["tempdir"], conf_file)
@@ -1194,7 +1194,7 @@ class RecoveryExecutor(object):
                 open(conf_file_path, "ab").close()
                 recovery_info["temporary_configuration_files"].append(conf_file_path)
 
-    def _analyse_temporary_config_files(self, recovery_info, recovery_conf_filename):
+    def _analyse_temporary_config_files(self, recovery_info):
         """
         Analyse temporary configuration files and identify dangerous options
 
@@ -1202,7 +1202,6 @@ class RecoveryExecutor(object):
         also changes harmful options such as 'archive_command'.
 
         :param dict recovery_info: dictionary holding all recovery parameters
-        :param str|None recovery_conf_filename: filename for storing recovery configurations
         """
         results = recovery_info["results"]
         config_mangeler = ConfigurationFileMangeler()
@@ -1212,8 +1211,8 @@ class RecoveryExecutor(object):
 
             append_lines = None
             conf_file_suffix = "postgresql.auto.conf"
-            if recovery_conf_filename:
-                conf_file_suffix = recovery_conf_filename
+            if recovery_info["results"]["recovery_configuration_file"]:
+                conf_file_suffix = recovery_info["results"]["recovery_configuration_file"]
             if conf_file.endswith(conf_file_suffix):
                 append_lines = recovery_info.get("auto_conf_append_lines")
 
