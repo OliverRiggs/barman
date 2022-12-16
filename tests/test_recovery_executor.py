@@ -169,6 +169,93 @@ class TestRecoveryExecutor(object):
             and "pg_ident.conf" in recovery_info["results"]["missing_files"]
         )
 
+    @pytest.mark.parametrize(
+        (
+            "remote_command",
+            "recovery_dir_key",
+            "recovery_configuration_file",
+        ),
+        [
+            (None, "destination_path", "postgresql.auto.conf"),
+            ("mock_remote_command", "tempdir", "postgresql.auto.conf"),
+            (None, "destination_path", "custom.recovery.conf"),
+            ("mock_remote_command", "tempdir", "custom.recovery.conf"),
+        ],
+    )
+    @mock.patch("barman.recovery_executor.open")
+    @mock.patch("barman.recovery_executor.RecoveryExecutor._copy_conf_files_to_tempdir")
+    @mock.patch("barman.recovery_executor.RecoveryExecutor._conf_files_exist")
+    def test_map_temporary_config_files_recovery_configuration_file(
+        self,
+        mock_conf_files_exist,
+        mock_copy_conf_files_to_tempdir,
+        mock_open,
+        remote_command,
+        recovery_dir_key,
+        recovery_configuration_file,
+        tmpdir,
+    ):
+        """
+        Test the method that prepares configuration files for the final steps of a
+        recovery handles the recovery_configuration_file correctly.
+        """
+        # GIVEN a backup from PostgreSQL 12 (or above)
+        backup_info = testing_helpers.build_test_backup_info()
+        backup_info.version = 120000
+        # AND a recovery executor
+        backup_manager = testing_helpers.build_backup_manager()
+        executor = RecoveryExecutor(backup_manager)
+        # AND recovery_info specifies a recovery_configuration_file
+        destination_path = tmpdir.mkdir("destination_path")
+        tempdir = tmpdir.mkdir("tempdir")
+        recovery_info = {
+            "configuration_files": ["postgresql.conf", "postgresql.auto.conf"],
+            "destination_path": destination_path.strpath,
+            "tempdir": tempdir.strpath,
+            "temporary_configuration_files": [],
+            "results": {
+                "missing_files": [],
+                "recovery_configuration_file": recovery_configuration_file,
+            },
+        }
+        # AND postgresql.conf and postgresql.auto.conf exist
+        mock_conf_files_exist.return_value = {
+            "postgresql.conf": True,
+            "postgresql.auto.conf": True,
+        }
+        mock_copy_conf_files_to_tempdir.return_value = [
+            os.path.join(recovery_info[recovery_dir_key], filename)
+            for filename in recovery_info["configuration_files"]
+        ]
+
+        # WHEN _map_temporary_config_files is called
+        executor._map_temporary_config_files(recovery_info, backup_info, remote_command)
+
+        # THEN the configuration files were added to expected_temporary_files
+        assert recovery_info["temporary_configuration_files"][:2] == [
+            os.path.join(recovery_info[recovery_dir_key], filename)
+            for filename in recovery_info["configuration_files"]
+        ]
+        if recovery_configuration_file not in recovery_info["configuration_files"]:
+            # THEN the file was created if it was not already in
+            # configuration_files
+            conf_file_path = os.path.join(
+                recovery_info[recovery_dir_key], recovery_configuration_file
+            )
+            mock_open.assert_called_once_with(conf_file_path, "ab")
+            # AND the path was appended to temporary_configuration_files
+            assert recovery_info["temporary_configuration_files"][-1] == os.path.join(
+                recovery_info[recovery_dir_key], recovery_configuration_file
+            )
+        else:
+            # OR if the file was already in configuration_files
+            # THEN it was not created
+            mock_open.assert_not_called()
+            # AND no additional temporary files were created
+            assert len(recovery_info["temporary_configuration_files"]) == len(
+                recovery_info["configuration_files"]
+            )
+
     @mock.patch("barman.recovery_executor.RsyncPgData")
     def test_setup(self, rsync_mock):
         """
