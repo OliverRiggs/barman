@@ -209,6 +209,59 @@ class TestRecoveryExecutor(object):
         executor.close()
         assert ret["wal_dest"].endswith("/pg_wal")
 
+    @pytest.mark.parametrize(
+        (
+            "postgres_version",
+            "recovery_conf_filename",
+            "expected_recovery_configuration_file",
+            "expected_in_configuration_files",
+        ),
+        [
+            (110000, None, "recovery.conf", False),
+            (110000, "custom.recovery.conf", "custom.recovery.conf", False),
+            (120000, None, "postgresql.auto.conf", True),
+            (120000, "custom.recovery.conf", "custom.recovery.conf", False),
+        ],
+    )
+    @mock.patch("barman.recovery_executor.RsyncPgData")
+    def test_setup_recovery_configuration_file(
+        self,
+        _rsync_mock,
+        postgres_version,
+        recovery_conf_filename,
+        expected_recovery_configuration_file,
+        expected_in_configuration_files,
+    ):
+        """
+        Test the handling of recovery configuration files during _setup.
+        """
+        # GIVEN a backup from a PostgreSQL server with the specified version
+        backup_info = testing_helpers.build_test_backup_info()
+        backup_info.version = postgres_version
+        # AND a recovery executor
+        backup_manager = testing_helpers.build_backup_manager()
+        executor = RecoveryExecutor(backup_manager)
+
+        # WHEN _setup is called on the recovery executor
+        recovery_info = executor._setup(
+            backup_info, None, "/path/to/recovery/dir", recovery_conf_filename
+        )
+        executor.close()
+
+        # THEN the expected recovery configuration file is set
+        assert (
+            recovery_info["results"]["recovery_configuration_file"]
+            == expected_recovery_configuration_file
+        )
+        # AND the presence of the recovery conf file in configuration_files matches
+        # expectations
+        assert (
+            expected_recovery_configuration_file in recovery_info["configuration_files"]
+        ) == expected_in_configuration_files
+        # AND regardless of the recovery configuration file, postgresql.auto.conf is in
+        # configuration_files
+        assert "postgresql.auto.conf" in recovery_info["configuration_files"]
+
     def test_set_pitr_targets(self, tmpdir):
         """
         Evaluate targets for point in time recovery
