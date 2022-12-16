@@ -65,7 +65,11 @@ class TestRecoveryExecutor(object):
         backup_manager = testing_helpers.build_backup_manager()
         assert RecoveryExecutor(backup_manager)
 
-    def test_analyse_temporary_config_files(self, tmpdir):
+    @pytest.mark.parametrize(
+        "recovery_configuration_file",
+        ("postgresql.auto.conf", "custom.recovery.conf"),
+    )
+    def test_analyse_temporary_config_files(self, recovery_configuration_file, tmpdir):
         """
         Test the method that identifies dangerous options into
         the configuration files
@@ -73,28 +77,31 @@ class TestRecoveryExecutor(object):
         # Build directory/files structure for testing
         tempdir = tmpdir.mkdir("tempdir")
         recovery_info = {
+            "auto_conf_append_lines": ["standby_mode = 'on'"],
             "configuration_files": ["postgresql.conf", "postgresql.auto.conf"],
             "tempdir": tempdir.strpath,
             "temporary_configuration_files": [],
             "results": {
                 "changes": [],
                 "warnings": [],
-                "recovery_configuration_file": "postgresql.auto.conf",
+                "recovery_configuration_file": recovery_configuration_file,
             },
         }
         postgresql_conf = tempdir.join("postgresql.conf")
-        postgresql_auto = tempdir.join("postgresql.auto.conf")
+        recovery_config_file = tempdir.join(recovery_configuration_file)
         postgresql_conf.write(
             "archive_command = something\n"
             "data_directory = something\n"
             "include = something\n"
             'include "without braces"'
         )
-        postgresql_auto.write(
+        recovery_config_file.write(
             "archive_command = something\n" "data_directory = something"
         )
         recovery_info["temporary_configuration_files"].append(postgresql_conf.strpath)
-        recovery_info["temporary_configuration_files"].append(postgresql_auto.strpath)
+        recovery_info["temporary_configuration_files"].append(
+            recovery_config_file.strpath
+        )
         # Build a RecoveryExecutor object (using a mock as server and backup
         # manager.
         backup_manager = testing_helpers.build_backup_manager()
@@ -110,12 +117,18 @@ class TestRecoveryExecutor(object):
         executor._analyse_temporary_config_files(recovery_info)
         assert len(recovery_info["results"]["changes"]) == 2
         assert len(recovery_info["results"]["warnings"]) == 4
+        # Verify auto options were appended
+        recovery_config_file_contents = recovery_config_file.read()
+        assert all(
+            append_line in recovery_config_file_contents
+            for append_line in recovery_info["auto_conf_append_lines"]
+        )
 
         # Test corner case with empty auto file
         recovery_info["results"]["changes"] = []
         recovery_info["results"]["warnings"] = []
         recovery_info["auto_conf_append_lines"] = ["l1", "l2"]
-        postgresql_auto.write("")
+        recovery_config_file.write("")
         executor._analyse_temporary_config_files(recovery_info)
         assert len(recovery_info["results"]["changes"]) == 1
         assert len(recovery_info["results"]["warnings"]) == 3
