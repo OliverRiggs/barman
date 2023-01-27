@@ -12,16 +12,15 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
-#      - name: build docker
-#        run: |
-#          set -x
-#          cd doc
-#          docker build . -t pandoc
-#        shell: bash
+      - name: build docker
+        run: |
+          set -x
+          cd doc
+          docker build . -t pandoc
+        shell: bash
 
       - name: build doc
         run: |
-          #export BASEDIR=${{env.BASEDIR}}
           cd doc/build
           ./build
         shell: bash
