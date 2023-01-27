@@ -12,7 +12,7 @@ DOCDIR=$(pwd)
 #BASEDIR=$(cd ..; pwd)
 #BASEDIR=/Users/didier.michel/projects
 #SRCDIR="${BASEDIR}/src"
-SRCDIR="${BASEDIR}/barman"
+SRCDIR="${BASEDIR}"
 DISTDIR="${DOCDIR}/dist"
 
 #git clone -b master "${BARMAN_ADMIN_GIT}" admin
