@@ -8,7 +8,8 @@ set -xeu
 #docker build . -t pandoc
 PANDOC_IMAGE=pandoc
 
-DOCDIR=$(pwd)
+#DOCDIR=$(pwd)
+DOCDIR="${BASEDIR}/doc"
 #BASEDIR=$(cd ..; pwd)
 #BASEDIR=/Users/didier.michel/projects
 #SRCDIR="${BASEDIR}/src"
