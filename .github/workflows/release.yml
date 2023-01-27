@@ -1,5 +1,5 @@
 name: documentation generation
-# Temporary change to test doc build
+
 
 on:
   # Allows you to run this workflow manually from the Actions tab
@@ -12,15 +12,18 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
-      - name: build docker
-        run: |
-          set -x
-          cd doc
-          docker build . -t pandoc
-        shell: bash
+#      - name: build docker
+#        run: |
+#          set -x
+#          cd doc
+#          docker build . -t pandoc
+#        shell: bash
 
       - name: build doc
         run: |
+          #export BASEDIR=${{env.BASEDIR}}
           cd doc/build
           ./build
         shell: bash
+        env:
+          BASEDIR: ${{ github.workspace }}
