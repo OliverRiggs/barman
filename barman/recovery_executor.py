@@ -1660,6 +1660,7 @@ class SnapshotRecoveryExecutor(RemoteConfigRecoveryExecutor):
         exclusive=False,
         target_action=None,
         standby_mode=None,
+        recovery_conf_filename=None,
         recovery_instance=None,
         recovery_zone=None,
     ):
@@ -1685,6 +1686,8 @@ class SnapshotRecoveryExecutor(RemoteConfigRecoveryExecutor):
         :param bool exclusive: whether the recovery is exclusive or not
         :param str|None target_action: The recovery target action
         :param bool|None standby_mode: standby mode
+        :param str|None recovery_conf_filename: filename for storing recovery
+            configurations
         :param str|None recovery_instance: The name of the recovery node as it is
             known by the cloud provider
         :param str|None recovery_zone: The zone in which the recovery node is located
@@ -1713,6 +1716,7 @@ class SnapshotRecoveryExecutor(RemoteConfigRecoveryExecutor):
             exclusive=exclusive,
             target_action=target_action,
             standby_mode=standby_mode,
+            recovery_conf_filename=recovery_conf_filename,
         )
 
     def _start_backup_copy_message(self):
