@@ -10,7 +10,7 @@ PANDOC_IMAGE=pandoc
 
 DOCDIR=$(pwd)
 #BASEDIR=$(cd ..; pwd)
-BASEDIR=/Users/didier.michel/projects
+#BASEDIR=/Users/didier.michel/projects
 #SRCDIR="${BASEDIR}/src"
 SRCDIR="${BASEDIR}/barman"
 DISTDIR="${DOCDIR}/dist"
